@@ -1,0 +1,195 @@
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 500;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+}
+
+/* Top row: check-in + kpi */
+.topRow {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Check-in card */
+.checkinCard {
+  background: var(--primary);
+  border: 1px solid hsl(30, 15%, 20%);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.checkinCard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, hsl(200, 95%, 55%, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.checkinTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.checkinLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: hsl(35, 15%, 60%);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.4rem;
+}
+
+.liveDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--color-success);
+  border-radius: 50%;
+  animation: pulse-dot 2s ease infinite;
+}
+
+.checkinTime {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: hsl(35, 25%, 95%);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.checkinIcon {
+  width: 44px;
+  height: 44px;
+  background: hsl(200, 95%, 55%, 0.15);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.checkinActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* KPI grid */
+.kpiGrid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kpiIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+.kpi_success { background: hsl(158, 64%, 35%, 0.10); color: var(--success); }
+.kpi_danger  { background: hsl(0, 72%, 51%, 0.10);   color: var(--destructive); }
+.kpi_warning { background: hsl(38, 92%, 50%, 0.10);  color: var(--warning); }
+.kpi_brand   { background: hsl(200, 95%, 55%, 0.10); color: var(--accent); }
+
+.kpiValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.kpiLabel {
+  font-size: var(--text-xs);
+  color: var(--muted-fg);
+  font-weight: 500;
+}
+
+.kpiChange {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 10px;
+  margin-top: 0.15rem;
+}
+.up   { color: var(--success); }
+.down { color: var(--destructive); }
+
+/* Bottom row */
+.bottomRow {
+  display: flex;
+  gap: 1.25rem;
+}
+
+/* Activity */
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.activityItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.activityItem:last-child { border-bottom: none; padding-bottom: 0; }
+
+.activityDot {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.activityText { flex: 1; }
+
+@media (max-width: 1100px) {
+  .kpiGrid { grid-template-columns: repeat(2, 1fr); }
+  .topRow { flex-direction: column; }
+  .checkinCard { width: 100%; }
+  .bottomRow { flex-direction: column; }
+}
+
+.checkinCard :global(.btn-ghost) {
+  color: hsl(35, 25%, 90%);
+}
+.checkinCard :global(.btn-ghost:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  color: hsl(35, 25%, 95%);
+}
+

@@ -1,0 +1,44 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from '@/hooks/useAuth'
+import AppLayout from '@/components/layout/AppLayout'
+import LoginPage from '@/pages/LoginPage'
+import DashboardPage from '@/pages/DashboardPage'
+import EmployeesPage from '@/pages/EmployeesPage'
+import AttendancePage from '@/pages/AttendancePage'
+import DepartmentsPage from '@/pages/DepartmentsPage'
+import LeavesPage from '@/pages/LeavesPage'
+import ReportsPage from '@/pages/ReportsPage'
+
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  return user ? <>{children}</> : <Navigate to="/login" replace />
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <AppLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="employees" element={<EmployeesPage />} />
+            <Route path="attendance" element={<AttendancePage />} />
+            <Route path="departments" element={<DepartmentsPage />} />
+            <Route path="leaves" element={<LeavesPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}

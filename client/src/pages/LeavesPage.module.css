@@ -1,0 +1,2 @@
+.pageHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.pageTitle { font-size: var(--text-2xl); font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; margin-bottom: 0.2rem; }
