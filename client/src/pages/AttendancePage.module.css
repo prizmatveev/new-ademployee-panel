@@ -68,9 +68,19 @@
 .summaryRow { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
 .summaryRow:last-child { border-bottom: none; }
 
+/* ── Tablet (≤900px) ─────────────────────────────────────── */
 @media (max-width: 900px) {
   .layout { flex-direction: column; }
   .sidebar { width: 100%; }
+}
+
+/* ── Mobile (≤768px) ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .pageHeader { margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .pageTitle  { font-size: var(--text-xl); }
+  .liveTimer  { font-size: 2.2rem; }
+  .checkinWidget { padding: 1.25rem; }
+  .widgetActions :global(.btn) { min-height: 44px; }
 }
 
 .checkinWidget :global(.btn-ghost) {

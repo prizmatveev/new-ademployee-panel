@@ -428,7 +428,59 @@ select.input {
   padding-right: 2rem;
 }
 
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile-First
+   Breakpoints: 768px (mobile), 1024px (tablet)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Tablet ─────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Mobile ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Grid collapse */
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+
+  /* Button touch targets — min 44px */
+  .btn    { min-height: 44px; }
+  .btn-sm { min-height: 36px; padding: 0.4rem 0.75rem; }
+  .btn-lg { min-height: 48px; }
+
+  /* Cards — reduce padding on mobile */
+  .card    { padding: 1.1rem; }
+  .card-sm { padding: 0.75rem; }
+
+  /* Tables — enable horizontal scroll on mobile */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table th,
+  .table td   { white-space: nowrap; padding: 0.75rem 0.875rem; }
+
+  /* Modal — full-width sheet on mobile */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-box {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: 1.5rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Font scale — slightly smaller on mobile */
+  .text-2xl { font-size: var(--text-xl); }
+  h1 { font-size: var(--text-2xl); }
+  h2 { font-size: var(--text-xl); }
+
+  /* Nav items — bigger tap targets */
+  .nav-item { min-height: 48px; padding: 0.75rem 1rem; }
+}
+
+/* ── Extra Small ─────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .card    { padding: 0.875rem; }
+  .card-sm { padding: 0.625rem; }
+  .btn     { font-size: var(--text-xs); }
+}
+

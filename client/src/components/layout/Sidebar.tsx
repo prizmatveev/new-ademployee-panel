@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Clock, Building2,
-  CalendarDays, BarChart3, LogOut, ChevronRight
+  CalendarDays, BarChart3, LogOut, ChevronRight, X
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import styles from './Sidebar.module.css'
@@ -15,7 +15,12 @@ const NAV_ITEMS = [
   { to: '/reports',     icon: BarChart3,        label: 'Reports',     roles: ['admin','hr','manager'] },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -31,16 +36,24 @@ export default function Sidebar() {
   const initials = user?.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? 'U'
 
   return (
-    <aside className={styles.sidebar}>
-      {/* Logo */}
+    <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
+      {/* Logo row with mobile close button */}
       <div className={styles.logo}>
         <div className={styles.logoIcon}>
           <span>L</span>
         </div>
-        <div>
+        <div className={styles.logoText}>
           <div className={styles.logoName}>LocalSM</div>
           <div className={styles.logoTagline}>Employee Portal</div>
         </div>
+        {/* Close button — only visible on mobile */}
+        <button
+          className={styles.closeBtn}
+          onClick={onClose}
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       <div className={styles.divider} />
@@ -53,6 +66,7 @@ export default function Sidebar() {
             <NavLink
               key={to}
               to={to}
+              onClick={onClose}
               className={({ isActive }) =>
                 `nav-item ${isActive ? 'active' : ''}`
               }

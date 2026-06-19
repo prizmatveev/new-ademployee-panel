@@ -10,6 +10,7 @@
   flex-direction: column;
   z-index: 100;
   overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo {
@@ -17,6 +18,11 @@
   align-items: center;
   gap: 0.75rem;
   padding: 1.25rem 1.25rem 1rem;
+}
+
+.logoText {
+  flex: 1;
+  min-width: 0;
 }
 
 .logoIcon {
@@ -49,6 +55,28 @@
   color: hsl(35, 15%, 60%);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+/* Close button — only shown on mobile */
+.closeBtn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--sidebar-fg);
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  transition: var(--transition);
+}
+.closeBtn:hover {
+  opacity: 1;
+  background: var(--sidebar-accent);
 }
 
 .divider {
@@ -149,4 +177,30 @@
   background: var(--sidebar-accent);
   color: var(--sidebar-fg);
   border-color: var(--sidebar-border);
+}
+
+/* ── Mobile ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar {
+    /* Hidden off-screen by default on mobile */
+    transform: translateX(-100%);
+    box-shadow: none;
+    width: min(var(--sidebar-width), 80vw);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .closeBtn {
+    display: flex;
+  }
+
+  /* Bigger nav items for touch targets */
+  .nav :global(.nav-item) {
+    padding: 0.75rem 1rem;
+    font-size: var(--text-base);
+    min-height: 48px;
+  }
 }

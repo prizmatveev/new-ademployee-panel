@@ -202,7 +202,40 @@
   border-color: hsl(200, 95%, 55%, 0.25);
 }
 
-@media (max-width: 900px) {
-  .hero { display: none; }
-  .formSide { width: 100%; }
+/* ── Tablet (≤1024px) ─────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .hero { padding: 2rem; }
+  .heroTitle { font-size: 2rem; }
+  .formSide { width: 380px; padding: 2rem; }
 }
+
+/* ── Small tablet / large mobile (≤768px) ─────────────────── */
+@media (max-width: 768px) {
+  /* Hide hero on mobile — show only the form */
+  .page { flex-direction: column; }
+  .hero { display: none; }
+  .formSide {
+    width: 100%;
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+    border-left: none;
+    border-top: none;
+    justify-content: center;
+  }
+  .form { max-width: 100%; }
+
+  /* Add a mini branding header since hero is hidden */
+  .formHeader { text-align: center; }
+  .formTitle  { font-size: var(--text-xl); }
+
+  /* Wider demo buttons on mobile */
+  .demoGrid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .demoBtn  { min-height: 44px; font-size: var(--text-sm); }
+}
+
+/* ── Extra small (≤380px) ─────────────────────────────────── */
+@media (max-width: 380px) {
+  .formSide { padding: 1.5rem 1rem; }
+  .demoGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
