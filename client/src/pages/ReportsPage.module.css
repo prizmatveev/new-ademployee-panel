@@ -49,6 +49,20 @@
   height: 100%; border-radius: 3px; transition: width 0.5s ease;
 }
 
+/* ── Tablet (≤900px) ─────────────────────────────────────── */
 @media (max-width: 900px) {
   .chartsRow { flex-direction: column; }
 }
+
+/* ── Mobile (≤768px) ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .pageHeader { margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .pageTitle  { font-size: var(--text-xl); }
+
+  /* Shrink bar chart height slightly on mobile */
+  .barChart { height: 110px; gap: 0.4rem; }
+  .barTrack { height: 80px; }
+  .barLabel { font-size: 10px; }
+  .barValue { font-size: 9px; }
+}
+
