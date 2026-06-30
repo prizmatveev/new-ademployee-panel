@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Plus, CheckSquare, Square, Trash2, Mail, Phone, MapPin, Briefcase, RefreshCw, AlertCircle, Inbox, KanbanSquare, CheckCircle } from 'lucide-react'
+import { Plus, CheckSquare, Square, Trash2, Mail, Phone, MapPin, RefreshCw, AlertCircle, Inbox, KanbanSquare, CheckCircle, Edit3, UserPlus, X } from 'lucide-react'
 import { format } from 'date-fns'
 import styles from './EmployeesPage.module.css'
 
@@ -26,13 +26,16 @@ type EmployeeProgress = {
   phone: string;
   location: string;
   createdAt: string;
+  dbDepartment?: string;
+  dbRole?: string;
 };
+
+const defaultDepts = ["Web Development", "App Development", "Graphics Design"];
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeProgress[]>([])
   
   // Dynamic categories/departments loaded from localStorage (shared with Job Management)
-  const defaultDepts = ["Web Development", "App Development", "Graphics Design"];
   const [departments, setDepartments] = useState<string[]>(() => {
     const saved = localStorage.getItem("admin_categories");
     if (saved) {
@@ -55,7 +58,23 @@ export default function EmployeesPage() {
   const [projectEditValue, setProjectEditValue] = useState('')
   const [isEditingProject, setIsEditingProject] = useState(false)
   const [newTaskText, setNewTaskText] = useState('')
+
+  // Employee details inline edit overrides
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editDeptValue, setEditDeptValue] = useState('')
+  const [editRoleValue, setEditRoleValue] = useState('')
   
+  // Create Employee modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [newEmpName, setNewEmpName] = useState('')
+  const [newEmpEmail, setNewEmpEmail] = useState('')
+  const [newEmpPhone, setNewEmpPhone] = useState('')
+  const [newEmpLocation, setNewEmpLocation] = useState('')
+  const [newEmpDept, setNewEmpDept] = useState('Web Development')
+  const [newEmpRole, setNewEmpRole] = useState('')
+  const [newEmpProject, setNewEmpProject] = useState('Onboarding & Training')
+  const [isCreatingEmp, setIsCreatingEmp] = useState(false)
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState(new Date())
@@ -70,8 +89,10 @@ export default function EmployeesPage() {
       setError(null)
       setLastUpdated(new Date())
 
-      // Sync categories dynamically from loaded job departments if any are not in list
-      const fromJobsCategories = Array.from(new Set(data.map((emp: any) => emp.job.category).filter(Boolean))) as string[];
+      // Sync categories dynamically from loaded job categories if any are missing
+      const fromJobsCategories = Array.from(
+        new Set(data.map((emp: any) => emp.job.category).filter(Boolean))
+      ) as string[];
       if (fromJobsCategories.length > 0) {
         setDepartments(prev => {
           const merged = Array.from(new Set([...prev, ...fromJobsCategories]));
@@ -109,7 +130,7 @@ export default function EmployeesPage() {
     }
   }, [load])
 
-  // Filtered employees listing
+  // Filtered employees list
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
       if (selectedDept === 'All') return true
@@ -131,11 +152,14 @@ export default function EmployeesPage() {
     return employees.find(e => e.applicationId === selectedEmployeeId) || null
   }, [employees, selectedEmployeeId])
 
-  // Reset project edit field when active employee changes
+  // Reset project and profile edit fields when active employee changes
   useEffect(() => {
     if (activeEmployee) {
       setProjectEditValue(activeEmployee.currentProject)
+      setEditDeptValue(activeEmployee.dbDepartment || activeEmployee.job.category)
+      setEditRoleValue(activeEmployee.dbRole || activeEmployee.job.title)
       setIsEditingProject(false)
+      setIsEditingProfile(false)
     }
   }, [activeEmployee])
 
@@ -162,6 +186,15 @@ export default function EmployeesPage() {
     setIsEditingProject(false)
   }
 
+  // Update employee department/role profile overrides
+  const handleSaveProfile = async () => {
+    const roleVal = editRoleValue.trim()
+    const deptVal = editDeptValue.trim()
+    if (!roleVal || !deptVal) return
+    await updateProgress({ role: roleVal, department: deptVal })
+    setIsEditingProfile(false)
+  }
+
   // Add new checklist task
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,6 +209,11 @@ export default function EmployeesPage() {
     await updateProgress({ toggleTaskId: taskId })
   }
 
+  // Delete task from checklist
+  const handleDeleteTask = async (taskId: string) => {
+    await updateProgress({ deleteTaskId: taskId })
+  }
+
   // Add new department/domain category
   const handleAddDepartment = () => {
     const newDept = prompt("Add new department/domain name:")?.trim();
@@ -187,9 +225,102 @@ export default function EmployeesPage() {
     setSelectedEmployeeId(null);
   }
 
-  // Delete task from checklist
-  const handleDeleteTask = async (taskId: string) => {
-    await updateProgress({ deleteTaskId: taskId })
+  // Rename department/domain category
+  const handleEditDepartment = async () => {
+    if (selectedDept === 'All') return;
+    const newDeptName = prompt("Rename department to:", selectedDept)?.trim();
+    if (!newDeptName || newDeptName === selectedDept) return;
+
+    try {
+      const res = await fetch('/api/departments/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'edit', oldName: selectedDept, newName: newDeptName })
+      });
+      if (!res.ok) throw new Error('Failed to rename department');
+
+      // Update local storage
+      const updated = departments.map(d => d === selectedDept ? newDeptName : d);
+      setDepartments(updated);
+      localStorage.setItem("admin_categories", JSON.stringify(updated));
+      setSelectedDept(newDeptName);
+      await load();
+      alert(`Successfully renamed "${selectedDept}" to "${newDeptName}".`);
+    } catch (err: any) {
+      alert(err.message || 'Error renaming department.');
+    }
+  }
+
+  // Delete department/domain category
+  const handleDeleteDepartment = async () => {
+    if (selectedDept === 'All') return;
+    if (!confirm(`Are you sure you want to delete the "${selectedDept}" department? Associated jobs will revert to Web Development.`)) return;
+
+    try {
+      const res = await fetch('/api/departments/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', oldName: selectedDept })
+      });
+      if (!res.ok) throw new Error('Failed to delete department');
+
+      // Update local storage
+      const updated = departments.filter(d => d !== selectedDept);
+      setDepartments(updated);
+      localStorage.setItem("admin_categories", JSON.stringify(updated));
+      setSelectedDept('All');
+      await load();
+      alert(`Successfully deleted department.`);
+    } catch (err: any) {
+      alert(err.message || 'Error deleting department.');
+    }
+  }
+
+  // Create manual employee record
+  const handleCreateEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newEmpName.trim();
+    const email = newEmpEmail.trim();
+    const phone = newEmpPhone.trim();
+    const location = newEmpLocation.trim() || 'Remote';
+    const department = newEmpDept;
+    const role = newEmpRole.trim() || 'Intern';
+    const currentProject = newEmpProject.trim() || 'Onboarding & Training';
+
+    if (!name || !email || !phone) return;
+
+    setIsCreatingEmp(true);
+    try {
+      const response = await fetch('/api/admin/employees/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone, location, department, role, currentProject })
+      });
+
+      if (!response.ok) {
+        const errPayload = await response.json().catch(() => null);
+        throw new Error(errPayload?.error || 'Failed to create employee');
+      }
+
+      const created = await response.json();
+      
+      // Reset form & close modal
+      setNewEmpName('');
+      setNewEmpEmail('');
+      setNewEmpPhone('');
+      setNewEmpLocation('');
+      setNewEmpRole('');
+      setNewEmpProject('Onboarding & Training');
+      setIsCreateModalOpen(false);
+      
+      await load();
+      setSelectedEmployeeId(created.applicationId);
+      alert('Intern/Employee added successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Error onboarding employee.');
+    } finally {
+      setIsCreatingEmp(false);
+    }
   }
 
   // Calculate task percentage
@@ -215,6 +346,11 @@ export default function EmployeesPage() {
           </span>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={load} disabled={loading} title="Sync Records">
             <RefreshCw size={14} className={loading ? styles.spinning : ''} />
+          </button>
+          
+          {/* Onboard manual Employee Button */}
+          <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <UserPlus size={15} /> Add Employee
           </button>
         </div>
       </div>
@@ -259,11 +395,23 @@ export default function EmployeesPage() {
         </button>
       </div>
 
+      {/* Department Actions Block (Rename/Delete) */}
+      {selectedDept !== 'All' && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', marginTop: '-1rem' }}>
+          <button className="btn btn-secondary btn-sm" onClick={handleEditDepartment} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '11px', padding: '0.3rem 0.6rem' }}>
+            <Edit3 size={11} /> Rename Category
+          </button>
+          <button className="btn btn-ghost btn-sm text-danger" onClick={handleDeleteDepartment} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '11px', padding: '0.3rem 0.6rem' }}>
+            <Trash2 size={11} /> Delete Category
+          </button>
+        </div>
+      )}
+
       {/* Layout Grid */}
       {employees.length === 0 ? (
         <div className={styles.emptyState}>
           <Inbox size={42} strokeWidth={1.5} />
-          <div className={styles.emptyText}>No employees marked as "Hired" in database. Shortlist and Hire candidates from the Applicants section first.</div>
+          <div className={styles.emptyText}>No employees marked as "Hired" in database. Onboard staff above or shortlist candidates from Applicants first.</div>
         </div>
       ) : (
         <div className={styles.layout}>
@@ -289,7 +437,6 @@ export default function EmployeesPage() {
                     <div className={styles.employeeInfo}>
                       <div className={styles.employeeName}>{emp.user.name}</div>
                       <div className={styles.employeeRole}>{emp.job.title}</div>
-                      {/* Sub progress line */}
                       <div className={styles.progressBarContainer} style={{ marginTop: '0.2rem' }}>
                         <div className={styles.progressBarOutline} style={{ height: '4px' }}>
                           <div className={styles.progressBarFill} style={{ width: `${stats.percent}%` }} />
@@ -308,15 +455,45 @@ export default function EmployeesPage() {
             <div className={styles.detailSection}>
               {/* Profile Card Header */}
               <div className={styles.detailHeader}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: 1 }}>
                   <div className={styles.avatar} style={{ width: '64px', height: '64px', fontSize: '24px' }}>
                     {activeEmployee.user.name.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase()}
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>{activeEmployee.user.name}</h2>
-                    <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
-                      💼 {activeEmployee.job.title} ({activeEmployee.job.category})
-                    </p>
+                    
+                    {/* Position and Department edit controls */}
+                    {isEditingProfile ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className={styles.projectInput}
+                          style={{ maxWidth: '160px', padding: '0.3rem 0.5rem', fontSize: '12px' }}
+                          value={editRoleValue}
+                          onChange={(e) => setEditRoleValue(e.target.value)}
+                          placeholder="Position/Role"
+                        />
+                        <select
+                          className={styles.projectInput}
+                          style={{ maxWidth: '160px', padding: '0.3rem 0.5rem', fontSize: '12px', height: '28px' }}
+                          value={editDeptValue}
+                          onChange={(e) => setEditDeptValue(e.target.value)}
+                        >
+                          {departments.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                        <button className="btn btn-primary btn-sm" onClick={handleSaveProfile} style={{ fontSize: '11px', padding: '0.2rem 0.5rem' }}>Save</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setIsEditingProfile(false)} style={{ fontSize: '11px', padding: '0.2rem 0.5rem' }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>💼 {activeEmployee.job.title} ({activeEmployee.job.category})</span>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setIsEditingProfile(true)} style={{ padding: '0.2rem' }} title="Change role or department">
+                          <Edit3 size={11} />
+                        </button>
+                      </p>
+                    )}
                     
                     <div className={styles.metaInfo}>
                       <span className={styles.metaItem}>
@@ -442,6 +619,123 @@ export default function EmployeesPage() {
               <div className={styles.emptyText}>Select an employee/intern from the list to view their progress dashboard</div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Manual Employee Onboarding Modal */}
+      {isCreateModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsCreateModalOpen(false)}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <button className={styles.modalCloseBtn} onClick={() => setIsCreateModalOpen(false)}>
+              <X size={18} />
+            </button>
+
+            <h3 className={styles.modalTitle} style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)' }}>
+              Add New Employee / Intern
+            </h3>
+            
+            <form onSubmit={handleCreateEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>FULL NAME *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  className={styles.addTaskInput}
+                  value={newEmpName}
+                  onChange={(e) => setNewEmpName(e.target.value)}
+                  disabled={isCreatingEmp}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>EMAIL ADDRESS *</label>
+                <input
+                  required
+                  type="email"
+                  placeholder="e.g. rahul@example.com"
+                  className={styles.addTaskInput}
+                  value={newEmpEmail}
+                  onChange={(e) => setNewEmpEmail(e.target.value)}
+                  disabled={isCreatingEmp}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>PHONE NUMBER *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. +91 9876543210"
+                  className={styles.addTaskInput}
+                  value={newEmpPhone}
+                  onChange={(e) => setNewEmpPhone(e.target.value)}
+                  disabled={isCreatingEmp}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>LOCATION</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Bangalore, India"
+                  className={styles.addTaskInput}
+                  value={newEmpLocation}
+                  onChange={(e) => setNewEmpLocation(e.target.value)}
+                  disabled={isCreatingEmp}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>DEPARTMENT *</label>
+                  <select
+                    className={styles.addTaskInput}
+                    style={{ height: '38px', background: 'var(--card)' }}
+                    value={newEmpDept}
+                    onChange={(e) => setNewEmpDept(e.target.value)}
+                    disabled={isCreatingEmp}
+                  >
+                    {departments.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>POSITION / ROLE</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Frontend Intern"
+                    className={styles.addTaskInput}
+                    value={newEmpRole}
+                    onChange={(e) => setNewEmpRole(e.target.value)}
+                    disabled={isCreatingEmp}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-fg)' }}>ASSIGN PROJECT</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Onboarding & Training"
+                  className={styles.addTaskInput}
+                  value={newEmpProject}
+                  onChange={(e) => setNewEmpProject(e.target.value)}
+                  disabled={isCreatingEmp}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setIsCreateModalOpen(false)} disabled={isCreatingEmp}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={isCreatingEmp}>
+                  {isCreatingEmp ? 'Creating...' : 'Onboard Employee'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

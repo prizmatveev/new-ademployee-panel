@@ -1,5 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import Job from '../models/Job.js';
 import Application from '../models/Application.js';
 import User from '../models/User.js';
@@ -410,7 +411,6 @@ router.get('/employees/progress', async (req, res) => {
       let progress = await EmployeeProgress.findOne({ applicationId: app._id });
       
       if (!progress) {
-        // Create default onboarding tasks if none exist
         progress = new EmployeeProgress({
           applicationId: app._id,
           currentProject: 'Onboarding & Training',
@@ -427,12 +427,17 @@ router.get('/employees/progress', async (req, res) => {
       formattedEmployees.push({
         applicationId: app._id,
         user: appObj.userId || { name: 'Unknown Candidate', email: 'unknown@localsm.com' },
-        job: appObj.jobId || { title: 'Unknown Role', category: 'General' },
+        job: {
+          title: progress.role || (appObj.jobId ? appObj.jobId.title : 'Hired Employee'),
+          category: progress.department || (appObj.jobId ? appObj.jobId.category : 'Web Development')
+        },
         currentProject: progress.currentProject,
         tasks: progress.tasks,
         phone: app.phone,
         location: app.location || 'Remote',
-        createdAt: app.createdAt
+        createdAt: app.createdAt,
+        dbDepartment: progress.department || '',
+        dbRole: progress.role || ''
       });
     }
 
@@ -443,10 +448,10 @@ router.get('/employees/progress', async (req, res) => {
   }
 });
 
-// POST /api/admin/employees/progress - Update current project or manage tasks
+// POST /api/admin/employees/progress - Update current project, custom department/role, or manage tasks
 router.post('/employees/progress', async (req, res) => {
   try {
-    const { applicationId, currentProject, newTaskText, toggleTaskId, deleteTaskId } = req.body;
+    const { applicationId, currentProject, department, role, newTaskText, toggleTaskId, deleteTaskId } = req.body;
 
     if (!applicationId) {
       return res.status(400).json({ error: 'applicationId is required' });
@@ -463,7 +468,17 @@ router.post('/employees/progress', async (req, res) => {
       progress.currentProject = String(currentProject).trim() || 'Onboarding & Training';
     }
 
-    // 2. Add a new task
+    // 2. Update custom department override
+    if (department !== undefined) {
+      progress.department = String(department).trim() || undefined;
+    }
+
+    // 3. Update custom role override
+    if (role !== undefined) {
+      progress.role = String(role).trim() || undefined;
+    }
+
+    // 4. Add a new task
     if (newTaskText !== undefined) {
       const text = String(newTaskText).trim();
       if (text) {
@@ -471,7 +486,7 @@ router.post('/employees/progress', async (req, res) => {
       }
     }
 
-    // 3. Toggle a task completion status
+    // 5. Toggle a task completion status
     if (toggleTaskId !== undefined) {
       const task = progress.tasks.id(toggleTaskId);
       if (task) {
@@ -480,7 +495,7 @@ router.post('/employees/progress', async (req, res) => {
       }
     }
 
-    // 4. Delete a task
+    // 6. Delete a task
     if (deleteTaskId !== undefined) {
       progress.tasks.pull({ _id: deleteTaskId });
     }
@@ -490,6 +505,134 @@ router.post('/employees/progress', async (req, res) => {
   } catch (error) {
     console.error('Error updating employee progress:', error);
     res.status(500).json({ error: 'Failed to update employee progress' });
+  }
+});
+
+// POST /api/admin/departments/manage - Edit or delete departments (and cascades to jobs/custom overrides)
+router.post('/departments/manage', async (req, res) => {
+  try {
+    const { action, oldName, newName } = req.body;
+    if (!action || !oldName) {
+      return res.status(400).json({ error: 'action and oldName are required' });
+    }
+
+    if (action === 'edit') {
+      if (!newName) return res.status(400).json({ error: 'newName is required for edit action' });
+      
+      // Update Job categories
+      await Job.updateMany({ category: oldName }, { $set: { category: newName } });
+      // Update custom department overrides
+      await EmployeeProgress.updateMany({ department: oldName }, { $set: { department: newName } });
+      
+      return res.json({ success: true, message: `Renamed department "${oldName}" to "${newName}"` });
+    }
+
+    if (action === 'delete') {
+      // Clear custom overrides that match oldName
+      await EmployeeProgress.updateMany({ department: oldName }, { $unset: { department: 1 } });
+      // Update jobs in this category to general fallback category
+      await Job.updateMany({ category: oldName }, { $set: { category: 'Web Development' } });
+      
+      return res.json({ success: true, message: `Deleted department "${oldName}"` });
+    }
+
+    res.status(400).json({ error: 'Invalid action' });
+  } catch (error) {
+    console.error('Error managing department:', error);
+    res.status(500).json({ error: 'Failed to manage department' });
+  }
+});
+
+// POST /api/admin/employees/manual - Manually onboard employees
+router.post('/employees/manual', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { name, email, phone, location, department, role, currentProject } = req.body;
+    if (!name || !email || !phone) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Name, email, and phone are required' });
+    }
+
+    // 1. Find or create User
+    let user = await User.findOne({ email }).session(session);
+    if (!user) {
+      const org = await mongoose.model('Organization').findOne({}).session(session);
+      const orgId = org ? org._id : new mongoose.Types.ObjectId();
+      
+      user = new User({
+        email,
+        passwordHash: await bcrypt.hash('welcome123', 12),
+        role: 'employee',
+        organizationId: orgId
+      });
+      await user.save({ session });
+    }
+
+    // 2. Find associated job or retrieve first available
+    let job = await Job.findOne({ category: department }).session(session);
+    if (!job) {
+      job = await Job.findOne({}).session(session);
+    }
+    if (!job) {
+      job = new Job({
+        title: role || 'Hired Intern',
+        category: department || 'Web Development',
+        description: 'Manual hire position',
+        location: location || 'Remote',
+        salary: 'TBD',
+        experience: 'Fresher',
+        employmentType: 'Full Time'
+      });
+      await job.save({ session });
+    }
+
+    // 3. Create Application
+    const app = new Application({
+      userId: user._id,
+      jobId: job._id,
+      phone,
+      location: location || 'Remote',
+      status: 'HIRED',
+      resume: 'db-asset://manual-hire',
+      linkedin: 'https://linkedin.com',
+      github: 'https://github'
+    });
+    await app.save({ session });
+
+    // 4. Create EmployeeProgress with custom overrides
+    const progress = new EmployeeProgress({
+      applicationId: app._id,
+      department: department || 'Web Development',
+      role: role || 'Hired Intern',
+      currentProject: currentProject || 'Onboarding & Training',
+      tasks: [
+        { text: 'Complete code of conduct and document submission', completed: true, completedAt: new Date() },
+        { text: 'Set up local development environment and database connections', completed: false },
+        { text: 'Review architecture layout guidelines and components structure', completed: false }
+      ]
+    });
+    await progress.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({
+      applicationId: app._id,
+      user: { name, email, role: 'employee' },
+      job: { title: role, category: department },
+      currentProject: progress.currentProject,
+      tasks: progress.tasks,
+      phone,
+      location: location || 'Remote',
+      createdAt: app.createdAt
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error creating manual employee:', error);
+    res.status(500).json({ error: 'Failed to create manual employee record' });
   }
 });
 
