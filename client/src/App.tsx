@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
-import EmployeesPage from '@/pages/EmployeesPage'
+import JobsPage from '@/pages/JobsPage'
 import AttendancePage from '@/pages/AttendancePage'
 import DepartmentsPage from '@/pages/DepartmentsPage'
 import LeavesPage from '@/pages/LeavesPage'
@@ -30,7 +30,7 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="employees" element={<EmployeesPage />} />
+            <Route path="jobs" element={<JobsPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="departments" element={<DepartmentsPage />} />
             <Route path="leaves" element={<LeavesPage />} />
