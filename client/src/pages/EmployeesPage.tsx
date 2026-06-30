@@ -28,10 +28,26 @@ type EmployeeProgress = {
   createdAt: string;
 };
 
-const DEPARTMENTS = ['All', 'Management', 'Engineering', 'HR', 'Marketing', 'Finance'];
-
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeProgress[]>([])
+  
+  // Dynamic categories/departments loaded from localStorage (shared with Job Management)
+  const defaultDepts = ["Web Development", "App Development", "Graphics Design"];
+  const [departments, setDepartments] = useState<string[]>(() => {
+    const saved = localStorage.getItem("admin_categories");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Failed to parse categories:', e);
+      }
+    }
+    return defaultDepts;
+  });
+
   const [selectedDept, setSelectedDept] = useState('All')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
   
@@ -53,6 +69,16 @@ export default function EmployeesPage() {
       setEmployees(data)
       setError(null)
       setLastUpdated(new Date())
+
+      // Sync categories dynamically from loaded job departments if any are not in list
+      const fromJobsCategories = Array.from(new Set(data.map((emp: any) => emp.job.category).filter(Boolean))) as string[];
+      if (fromJobsCategories.length > 0) {
+        setDepartments(prev => {
+          const merged = Array.from(new Set([...prev, ...fromJobsCategories]));
+          localStorage.setItem("admin_categories", JSON.stringify(merged));
+          return merged;
+        });
+      }
     } catch (err: any) {
       console.error('Error fetching progress:', err)
       setError(err.message || 'Could not load employees records.')
@@ -150,6 +176,17 @@ export default function EmployeesPage() {
     await updateProgress({ toggleTaskId: taskId })
   }
 
+  // Add new department/domain category
+  const handleAddDepartment = () => {
+    const newDept = prompt("Add new department/domain name:")?.trim();
+    if (!newDept) return;
+    const merged = Array.from(new Set([...departments, newDept]));
+    setDepartments(merged);
+    localStorage.setItem("admin_categories", JSON.stringify(merged));
+    setSelectedDept(newDept);
+    setSelectedEmployeeId(null);
+  }
+
   // Delete task from checklist
   const handleDeleteTask = async (taskId: string) => {
     await updateProgress({ deleteTaskId: taskId })
@@ -191,18 +228,35 @@ export default function EmployeesPage() {
 
       {/* Tabs */}
       <div className={styles.toolbar}>
-        {DEPARTMENTS.map(dept => (
+        <button
+          className={`${styles.tabBtn} ${selectedDept === 'All' ? styles.activeTabBtn : ''}`}
+          onClick={() => {
+            setSelectedDept('All');
+            setSelectedEmployeeId(null);
+          }}
+        >
+          All
+        </button>
+        {departments.map(dept => (
           <button
             key={dept}
             className={`${styles.tabBtn} ${selectedDept === dept ? styles.activeTabBtn : ''}`}
             onClick={() => {
               setSelectedDept(dept);
-              setSelectedEmployeeId(null); // Auto-select first in new category
+              setSelectedEmployeeId(null);
             }}
           >
             {dept}
           </button>
         ))}
+        {/* + Add Department */}
+        <button
+          className={styles.addDeptBtn}
+          onClick={handleAddDepartment}
+          title="Add a new department/domain"
+        >
+          <Plus size={13} /> Add Department
+        </button>
       </div>
 
       {/* Layout Grid */}

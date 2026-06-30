@@ -63,6 +63,27 @@
   border-top-right-radius: var(--radius-sm);
 }
 
+.addDeptBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  color: var(--color-brand-light);
+  padding: 0.35rem 0.75rem;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  margin-left: auto;
+  transition: var(--transition);
+}
+
+.addDeptBtn:hover {
+  background: var(--color-brand-muted);
+  border-color: var(--color-brand);
+}
+
 /* Two-column layout */
 .layout {
   display: flex;
